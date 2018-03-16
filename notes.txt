@@ -1,0 +1,384 @@
+create a fold with the project's name
+navigate to the root folder
+$ npm init -y
+(Creates package.json)
+
+$ npm install webpack@4.0.1 --save-dev
+$ npm install webpack-cli@2.0.9 --save-dev
+
+($ npm prune will remove unnecessary dependencies)
+
+$ npm install jquery --save (note that not using -dev makes it available to production too)
+
+* To make sure your projects run correctly (including code reviews), it's a good idea to clone the finished project and see if it correctly builds and runs. If it doesn't, a dependency probably didn't get added to the package.json file.
+
+$ git diff <-- this is to check you are uploading the right version of your file
+SO:
+
+$ git status
+$ git diff
+$ git add (one or more files)
+$ git commit
+
+.gitignore file in the root should contain: <-----------------------------------------------------------------------------------------
+
+node_modules/
+.DS_Store
+dist/
+
+(git starts tracking as soon as you commit!)
+
+$ git rm --cached <filename> <-- this will remove a file from tracking that you don't want to have tracked
+
+webpack is a module bundler not a task runner
+
+main.js is our entry point
+
+get rid of the test script so it should instead look like this:
+
+"scripts": {        <-----------------------------------------------------------------------------------------------------------------
+    "build": "webpack",
+	"start": "webpack-dev-server --open"   
+  },
+  
+And now we can run npm run build (but with an error)
+
+webpack.config.js should now go in the top level of the project.
+
+const path = require('path');
+
+module.exports = {
+  entry: './src/main.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist')
+  }
+};
+
+still have an error but that's what import and export are for.
+
+In general, each constructor should have its own file and we should modularize our code as much as possible. (THESE WILL BE CLASS CONSTRUCTORS LATER)
+
+OLD WAY:
+triangle-logic.js
+function Triangle(side1, side2, side3) {
+  ...
+}
+exports.triangleModule = Triangle;
+
+interface-logic.js
+var Triangle = require('./../js/triangle.js').triangleModule;
+
+NEW WAY:
+triangle-logic.js
+export function Triangle(side1, side2, side3) {
+  ...
+}
+
+interface-logic.js
+import { Triangle } from './../js/triangle.js';
+
+
+Can import multiple classes as so:
+
+import { Triangle, Rectangle, Circle } from './../js/shape.js';
+
+javaScript source code will go inside src while all of our bundled code will go inside dist
+
+PACKAGE.JSON
+{
+  "name": "ping-pong",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+	"test": "jasmine",
+	"test": "karma start karma.conf.js",
+    "build": "webpack --mode development",
+	"start": "npm run build; webpack-dev-server --open --mode development",  // <<<-------- this "--open --mode developement" is optional
+	"lint": "eslint src/*.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "^4.0.1",
+    "webpack-cli": "^2.0.9",
+	"bootstrap": "^4.0.0",
+    "jquery": "^3.3.1",
+    "popper.js": "^1.14.0"
+  }
+}
+
+WEBPACK.CONFIG.JS <-------------------------------------------------------------------------------------------------------------------------
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');  
+
+
+module.exports = {
+  entry: './src/main.js',
+  output: {
+    filename: 'bundle.js',
+    path: path.resolve(__dirname, 'dist')
+  },
+  devtool: 'eval-source-map',
+  devServer: {
+    contentBase: './dist'
+  },
+  plugins: [
+	new UglifyJsPlugin({ sourceMap: true }), 
+	new CleanWebpackPlugin(['dist']),
+    new HtmlWebpackPlugin({
+      title: 'Ping Pong',        <------------------------------------------------------------------------- this is the project name
+      template: './src/index.html',
+      inject: 'body'
+    })
+  ],
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: [
+          'style-loader',
+          'css-loader'
+        ]
+      },										<-------------- added this here for the linter,  from the comma
+	  {
+        test: /\.js$/,
+        exclude: [
+		/node_modules/,
+		/spec/
+		],
+        loader: "eslint-loader"
+      },											<--------------- ending here (comma added later)
+	  {                         
+        test: /\.js$/,
+        exclude: [
+          /node_modules/,
+          /spec/
+        ],
+        loader: "babel-loader",
+        options: {
+          presets: ['es2015']
+        }
+      }
+    ]
+  }
+};
+
+
+
+DIST/INDEX.HTML
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+    <script type="text/javascript" src="bundle.js"></script>
+    <title>Ping Pong</title>
+  </head>
+  <body>
+    <form id="ping-pong-form">
+      <label for="goal">Enter a number:</label>
+      <input id="goal" type="number">
+      <button type="submit">Submit</button>
+    </form>
+    <ul id="solution"></ul>
+  </body>
+</html>
+
+SRC/PING-PONG.JS
+export function pingPong(goal) {
+  var output = [];
+  for (var i = 1; i <= goal; i++) {
+    if (i % 15 === 0) {
+      output.push("ping-pong");
+    } else if (i % 3 === 0) {
+      output.push("ping");
+    } else if (i % 5 === 0) {
+      output.push("pong");
+    } else  {
+      output.push(i);
+    }
+  }
+  return output;
+}
+
+SRC/MAIN.JS
+import { pingPong } from './ping-pong';
+import $ from 'jquery';
+import 'bootstrap';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'css/styles.css';				<------------------------------------------------------- added this myself so I can get my own css 
+
+$(document).ready(function() {
+  $('#ping-pong-form').submit(function(event) {
+    event.preventDefault();
+    var goal = $('#goal').val();
+    var output = pingPong(goal);
+    output.forEach(function(element) {
+      $('#solution').append("<li>" + element + "</li>");
+    });
+  });
+});
+
+$ npm install style-loader@0.20.2 css-loader@0.28.10 --save-dev
+
+SRC/STYLES.CSS
+body {
+  background-color: #7FDBFF;
+}
+
+Add this to your main.js: import './styles.css';
+
+Move HTML to the src folder
+
+$ npm install html-webpack-plugin@3.0.6 --save-dev
+
+remove the <script> tag from index.html
+
+(changes will be reflected in the config file)
+$ npm install clean-webpack-plugin@0.1.18 --save-dev
+
+(changes will be reflected in the config file)
+$ npm install uglifyjs-webpack-plugin@1.2.2 --save-dev
+
+$ npm install webpack-dev-server@3.1.0 --save-dev
+
+now using $ npm run start
+
+Linter time!
+
+$ npm install eslint@4.18.2 --save-dev
+$ npm install eslint-loader@2.0.0 --save-dev
+
+.ESLINTRC					<-------------------------------------------------------------------- Linter
+{
+    "parserOptions": {
+        "ecmaVersion": 6,
+        "sourceType": "module"
+    },
+    "extends": "eslint:recommended",
+    "env": {
+      "browser": true,
+      "jquery": true,
+	  "node": true,
+	  "jasmine": true,
+    },
+    "rules": {
+        "semi": 1,
+        "indent": ["warn", 2],
+		"no-console": "warn",
+		"no-debugger": "warn",
+		"no-unused-vars": 'warn'
+    }
+}
+
+
+$ npm run lint
+
+$ npm install jquery --save   <------------------------------------- remove jquery form any script tag in HTMl files
+
+$ npm install popper.js --save
+
+$ npm install bootstrap --save
+
+AFTER EVERYTHING ELSE
+
+$ npm install jasmine-core@2.99.0 --save-dev
+$ npm install jasmine@3.1.0 --save-dev
+
+$ ./node_modules/.bin/jasmine init
+
+$ npm install karma@2.0.0 --save-dev
+$ npm install karma-jasmine@1.1.1 --save-dev
+$ npm install karma-chrome-launcher@2.2.0 --save-dev
+$ npm install -g karma-cli
+$ npm install karma-cli@1.0.1 --save-dev
+$ npm install karma-webpack@2.0.13 --save-dev
+$ npm install karma-jquery@0.2.2 --save-dev
+$ npm install karma-jasmine-html-reporter@0.2.2 --save-dev
+
+run in the root project folder now: $ karma init 
+
+then make this configuration file:
+
+KARMA.CONF.JS
+const webpackConfig = require('./webpack.config.js');
+
+module.exports = function(config) {
+  config.set({
+    basePath: '',
+    frameworks: ['jquery-3.2.1', 'jasmine'],
+    files: [
+      'src/*.js',
+      'spec/*spec.js'
+    ],
+    webpack: webpackConfig,
+    exclude: [
+    ],
+    preprocessors: {
+      'src/*.js': ['webpack'],
+      'spec/*spec.js': ['webpack']
+    },
+    plugins: [
+      'karma-jquery',
+      'karma-webpack',
+      'karma-jasmine',
+      'karma-chrome-launcher',
+      'karma-jasmine-html-reporter'
+    ],
+    reporters: ['progress', 'kjhtml'],
+    port: 9876,
+    colors: true,
+    logLevel: config.LOG_INFO,
+    autoWatch: true,
+    browsers: ['Chrome'],
+    singleRun: false,
+    concurrency: Infinity
+  })
+}
+
+now we can run: $ npm test after $ npm run build
+
+now http://localhost:9876/debug.html will show the latest results of our tests
+
+read this before starting the project: https://www.learnhowtoprogram.com/javascript/test-driven-development/the-red-green-refactor-workflow-12fb3e35-237a-4d6a-b398-2e05d518f023
+
+* Identify the simplest possible behavior our program must exhibit.
+* Write a coded test
+* Before coding make sure the test fails.
+* Implement the behavior with the least amount of code possible.
+* Run the automated test to confirm it passes. (If it does not, revisit step 4.)
+* Make sure all previous tests still pass.
+* Check if code can be refactored. If so, refactor and repeat step 6.
+* Repeat this entire process with the next simplest behavior.
+
+In test cases if you need to use something a bunch of times, use beforeEach():
+
+beforeEach(function() {
+    reusableTriangle = new Triangle(5, 5, 5);
+  });
+  
+Look at this to see if I missed anything:
+
+https://github.com/epicodus-lessons/triangle-tracker-with-jasmine-karma
+
+$ npm install babel-core@6.26.0 babel-loader@7.1.3 babel-preset-es2015@6.24.1 --save-dev
+
+Template Literals:
+
+let language = "JavaScript"
+let adjective = "fun"
+let concatenatedString = language + " is " + adjective + " to learn!"
+
+let length = 2;
+let width = 3;
+let rectangleArea = `The area of a rectangle with length ${length} and width ${width} is ${length * width}.`
+
+const multiLineString = `This is not
+a good poem
+about JavaScript.`    <----------------------------------------------------------------------------- multi-line string
+
+https://www.learnhowtoprogram.com/javascript/test-driven-development/developer-reality-documentation-and-process   <------------------------------------- read this again!
+
