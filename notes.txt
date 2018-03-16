@@ -1,4 +1,4 @@
-create a fold with the project's name
+create a folder with the project's name
 navigate to the root folder
 $ npm init -y
 (Creates package.json)
